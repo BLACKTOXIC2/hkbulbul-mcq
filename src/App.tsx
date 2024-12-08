@@ -1,95 +1,83 @@
 import React, { useState } from 'react';
-import { Brain } from 'lucide-react';
-import QuizForm from './components/QuizForm';
-import QuizGame from './components/QuizGame';
-import { generateQuestions } from './services/api';
-import { Question, QuizState } from './types';
+import { MainHeader } from './components/MainHeader';
+import { Header } from './components/Header';
+import { TextArea } from './components/TextArea';
+import { RewrittenText } from './components/RewrittenText';
+import { ToneButtons } from './components/ToneButtons';
+import { LoadingIndicator } from './components/LoadingIndicator';
+import { Footer } from './components/Footer';
+import { rewriteText } from './utils/text-rewriter';
+import type { ToneOption } from './types';
 
 function App() {
+  const [inputText, setInputText] = useState('');
+  const [outputText, setOutputText] = useState('');
+  const [selectedTone, setSelectedTone] = useState<ToneOption | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [quizState, setQuizState] = useState<QuizState>({
-    questions: [],
-    currentQuestion: 0,
-    score: 0,
-    isComplete: false,
-  });
+  const [error, setError] = useState('');
 
-  const handleQuizSubmit = async (text: string, numQuestions: number) => {
-    setError(null);
-    try {
-      setIsLoading(true);
-      const questions = await generateQuestions(text, numQuestions);
-      setQuizState({
-        questions,
-        currentQuestion: 0,
-        score: 0,
-        isComplete: false,
-      });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to generate quiz';
-      setError(message);
-      console.error('Quiz generation error:', error);
-    } finally {
-      setIsLoading(false);
+  const handleRewrite = async (tone: ToneOption) => {
+    if (!inputText.trim()) {
+      setError('Please enter some text to rewrite');
+      return;
     }
-  };
 
-  const handleAnswer = (answer: string) => {
-    const currentQuestion = quizState.questions[quizState.currentQuestion];
-    const isCorrect = answer === currentQuestion.correctAnswer;
-    const scoreChange = isCorrect ? 4 : -1;
+    setIsLoading(true);
+    setError('');
+    setSelectedTone(tone);
 
-    setQuizState((prev) => ({
-      ...prev,
-      score: prev.score + scoreChange,
-      currentQuestion: prev.currentQuestion + 1,
-      isComplete: prev.currentQuestion + 1 >= prev.questions.length,
-    }));
-  };
+    const result = await rewriteText(inputText, tone);
 
-  const resetQuiz = () => {
-    setQuizState({
-      questions: [],
-      currentQuestion: 0,
-      score: 0,
-      isComplete: false,
-    });
-    setError(null);
+    if (result.error) {
+      setError(result.error);
+    } else {
+      setOutputText(result.text);
+    }
+
+    setIsLoading(false);
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-4 py-8">
-        <header className="text-center mb-12">
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <Brain className="w-12 h-12 text-blue-600" />
-            <h1 className="text-4xl font-bold text-gray-800">AI Quiz Generator</h1>
-          </div>
-          <p className="text-gray-600">Generate custom quizzes from any text using AI</p>
-        </header>
+    <div className="min-h-screen flex flex-col bg-gray-50">
+      <MainHeader />
+      
+      <main className="flex-grow py-6 md:py-12 px-4">
+        <div className="max-w-4xl mx-auto space-y-6 md:space-y-8">
+          <Header />
 
-        <main className="flex flex-col items-center justify-center">
-          {error && (
-            <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
-              {error}
+          <div className="grid gap-6 md:grid-cols-2">
+            <div className="space-y-4">
+              <TextArea
+                label="Original Text"
+                placeholder="Enter your text here..."
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                error={error}
+              />
+              <p className="text-sm text-gray-500 text-right">
+                {inputText.length} characters
+              </p>
             </div>
-          )}
-          
-          {quizState.questions.length === 0 ? (
-            <QuizForm onSubmit={handleQuizSubmit} isLoading={isLoading} />
-          ) : (
-            <QuizGame
-              questions={quizState.questions}
-              currentQuestion={quizState.currentQuestion}
-              score={quizState.score}
-              onAnswer={handleAnswer}
-              isComplete={quizState.isComplete}
-              onReset={resetQuiz}
+
+            <RewrittenText 
+              text={outputText}
+              tone={selectedTone}
             />
-          )}
-        </main>
-      </div>
+          </div>
+
+          <ToneButtons 
+            onSelectTone={handleRewrite}
+            isLoading={isLoading}
+          />
+
+          <LoadingIndicator 
+            isLoading={isLoading}
+            selectedTone={selectedTone}
+          />
+        </div>
+      </main>
+
+      <Footer />
     </div>
   );
 }

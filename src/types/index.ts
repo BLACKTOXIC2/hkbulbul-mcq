@@ -1,13 +1,6 @@
-export interface Question {
-  id: number;
-  question: string;
-  options: string[];
-  correctAnswer: string;
-}
+export type ToneOption = 'creative' | 'friendly' | 'professional';
 
-export interface QuizState {
-  questions: Question[];
-  currentQuestion: number;
-  score: number;
-  isComplete: boolean;
+export interface RewriteResponse {
+  text: string;
+  error?: string;
 }
